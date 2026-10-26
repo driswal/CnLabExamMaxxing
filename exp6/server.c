@@ -1,75 +1,82 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
-#define PORT 8080
+#define PORT 12345
 
 int main()
 {
-    int server_fd, client_fd;
-
-    struct sockaddr_in server, client;
-    socklen_t len = sizeof(client);
-
-    char filename[100];
+    int sockfd;
     char buffer[1024];
-    FILE *fp;
 
-    // Create TCP socket
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t len;
 
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(PORT);
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    // Bind socket
-    bind(server_fd, (struct sockaddr *)&server, sizeof(server));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    // Listen for client
-    listen(server_fd, 1);
+    bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
-    printf("File Server Running...\n");
+    printf("UDP Server is Running...\n");
 
-    // Accept one client
-    client_fd = accept(server_fd, (struct sockaddr *)&client, &len);
+    len = sizeof(client_addr);
 
-    printf("Client Connected\n");
+    recvfrom(sockfd, buffer, sizeof(buffer), 0,
+             (struct sockaddr *)&client_addr, &len);
 
-    // Receive filename
-    recv(client_fd, filename, sizeof(filename), 0);
+    printf("Received Sentence: %s\n", buffer);
 
-    printf("Requested File : %s\n", filename);
+    char result[1024] = "";
+    char word[100];
 
-    fp = fopen(filename, "r");
+    int i = 0;
 
-    if (fp == NULL)
+    while (sscanf(buffer + i, "%s", word) == 1)
     {
-        sprintf(buffer,
-                "Server PID : %d\nFile not found.",
-                getpid());
+        if (strcmp(word, "tbh") == 0)
+            strcat(result, "to be honest");
+        else if (strcmp(word, "ig") == 0)
+            strcat(result, "I guess");
+        else if (strcmp(word, "tbf") == 0)
+            strcat(result, "to be fair");
+        else if (strcmp(word, "atm") == 0)
+            strcat(result, "at the moment");
+        else if (strcmp(word, "irl") == 0)
+            strcat(result, "in real life");
+        else if (strcmp(word, "lol") == 0)
+            strcat(result, "laughing out loud");
+        else if (strcmp(word, "asap") == 0)
+            strcat(result, "as soon as possible");
+        else if (strcmp(word, "omg") == 0)
+            strcat(result, "oh my God");
+        else if (strcmp(word, "ttyl") == 0)
+            strcat(result, "talk to you later");
+        else if (strcmp(word, "idk") == 0)
+            strcat(result, "I don't know");
+        else if (strcmp(word, "nvm") == 0)
+            strcat(result, "never mind");
+        else if (strcmp(word, "idc") == 0)
+            strcat(result, "I don't care");
+        else
+            strcat(result, word);
 
-        send(client_fd, buffer, strlen(buffer), 0);
+        strcat(result, " ");
+
+        i = i + strlen(word) + 1;
     }
-    else
-    {
-        sprintf(buffer,
-                "Server PID : %d\n\n",
-                getpid());
 
-        send(client_fd, buffer, strlen(buffer), 0);
+    strcpy(buffer, result);
 
-        while (fgets(buffer, sizeof(buffer), fp) != NULL)
-        {
-            send(client_fd, buffer, strlen(buffer), 0);
-        }
+    sendto(sockfd, buffer, strlen(buffer) + 1, 0,
+           (struct sockaddr *)&client_addr, len);
 
-        fclose(fp);
-    }
+    printf("Translated sentence sent to client.\n");
 
-    close(client_fd);
-    close(server_fd);
+    close(sockfd);
 
     return 0;
 }

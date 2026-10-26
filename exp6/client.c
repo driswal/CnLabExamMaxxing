@@ -1,48 +1,36 @@
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
-#define PORT 8080
+#define PORT 12345
 
 int main()
 {
     int sockfd;
-
-    struct sockaddr_in server;
-
-    char filename[100];
     char buffer[1024];
 
-    // Create socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server_addr;
+    socklen_t len;
 
-    server.sin_family = AF_INET;
-    server.sin_port = htons(PORT);
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    // Connect to server
-    connect(sockfd, (struct sockaddr *)&server, sizeof(server));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    printf("Enter filename: ");
-    scanf("%s", filename);
+    printf("Enter a sentence:\n");
+    fgets(buffer, sizeof(buffer), stdin);
 
-    // Send filename
-    send(sockfd, filename, strlen(filename) + 1, 0);
+    sendto(sockfd, buffer, strlen(buffer) + 1, 0,
+           (struct sockaddr *)&server_addr, sizeof(server_addr));
 
-    printf("\n---- Server Response ----\n");
+    len = sizeof(server_addr);
 
-    while (1)
-    {
-        int n = recv(sockfd, buffer, sizeof(buffer) - 1, 0);
+    recvfrom(sockfd, buffer, sizeof(buffer), 0,
+             (struct sockaddr *)&server_addr, &len);
 
-        if (n <= 0)
-            break;
-
-        buffer[n] = '\0';
-
-        printf("%s", buffer);
-    }
+    printf("\nTranslated Sentence:\n%s\n", buffer);
 
     close(sockfd);
 
